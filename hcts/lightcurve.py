@@ -1,20 +1,50 @@
 
 import numpy as np
 import batman
-
+import matplotlib.pyplot as plt
 from copy import deepcopy
 
 __all__ = ['LightCurve']
 
 
 class LightCurve(object):
+    """
+    Container for light curves.
+    """
     def __init__(self, times, fluxes):
+        """
+        Parameters
+        ----------
+        times : `~np.ndarray`
+            Times
+        fluxes : `~np.ndarray`
+            Fluxes
+        """
         self.times = times
         self.fluxes = fluxes
 
+    def plot(self):
+        plt.plot(self.times, self.fluxes)
+
     def get_transit_model(self, init_params, yerr):
         """
+        Fit a Mandel & Agol transit model to the light curve.
+
         Free parameters: inclination, midtransit time, limb-darkening parameters
+
+        Parameters
+        ----------
+        init_params : list of length 4
+            Initial fitting parameters for inclination, midtransit time, and
+            two quadratic limb-darkening parmaeters
+
+        yerr : float
+            Uncertainty on flux measurements
+
+        Returns
+        -------
+        lc : `~hcts.LightCurve`
+            Best-fit transit model
         """
         def transit_model(p):
             inc, t0, u1, u2 = p
