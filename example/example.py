@@ -5,12 +5,12 @@ from sunpy.net import Fido, attrs as a
 from sunpy.map import Map
 import matplotlib.pyplot as plt
 
-result = Fido.search(a.Time('2013/5/13 15:55', '2013/5/13 15:56'),
-                     a.Instrument('HMI'), a.vso.Physobs('intensity'))
+# result = Fido.search(a.Time('2013/5/13 15:55', '2013/5/13 15:56'),
+#                      a.Instrument('HMI'), a.vso.Physobs('intensity'))
+#
+# downloaded_files = Fido.fetch(result, path='data/.')
 
-downloaded_files = Fido.fetch(result, path='data/.')
-
-m = Map(downloaded_files[0])
+m = Map('data/hmi_ic_45s_2013_05_13_15_56_15_tai_continuum.fits')
 
 image = m.data
 

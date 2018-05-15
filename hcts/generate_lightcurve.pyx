@@ -12,16 +12,27 @@ DTYPE = np.float32
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing.
-def generate_lightcurve(image, R_planet_pixels=17.26, background=269):
-# cdef np.ndarray generate_lightcurve(np.ndarray image):
-#     cdef float R_planet_pixels = 17.26
+def rebin(arr, R_planet_pixels_upper, supersample_factor):
+    cdef list new_shape = [2*R_planet_pixels_upper, 2*R_planet_pixels_upper]
+    cdef list shape = [new_shape[0], arr.shape[0] // new_shape[0],
+                       new_shape[1], arr.shape[1] // new_shape[1]]
+    reshaped = arr.reshape(shape).sum(-1).sum(1)
+    return reshaped / reshaped.max()
+
+
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)   # Deactivate negative indexing.
+def generate_lightcurve(image, R_planet_pixels=17.26, background=269,
+                        supersample_factor=4):
     cdef int R_planet_pixels_upper = int((R_planet_pixels+1)//1)
     cdef float R_planet_pixels_squared = R_planet_pixels**2
-    # cdef float background = 269.0
     cdef int n_images = 4096 - 2 * R_planet_pixels_upper
     cdef int step, i, j
     cdef np.ndarray mask = np.zeros((2*R_planet_pixels_upper,
                                      2*R_planet_pixels_upper), dtype=DTYPE)
+    cdef np.ndarray mask_supersampled = np.zeros((2 * R_planet_pixels_upper * supersample_factor,
+                                                  2 * R_planet_pixels_upper * supersample_factor), dtype=DTYPE)
+
     cdef np.ndarray fluxes = np.zeros(n_images, dtype=DTYPE)
     cdef float unobscured_flux, obscured_flux, r_pixel
 
@@ -35,11 +46,17 @@ def generate_lightcurve(image, R_planet_pixels=17.26, background=269):
 
     unobscured_flux = image.sum()
 
-    for i in range(0, 2*R_planet_pixels_upper):
-        for j in range(0, 2*R_planet_pixels_upper):
-            r_pixel = (i - R_planet_pixels_upper)**2 + (j - R_planet_pixels_upper)**2
-            if r_pixel < R_planet_pixels_squared:
-                mask[i, j] += 1.0
+    cdef int new_shape = 2*R_planet_pixels_upper * supersample_factor
+    cdef list shape = [new_shape, mask.shape[0] // new_shape,
+                       new_shape, mask.shape[1] // new_shape]
+
+    for i in range(0, 2*R_planet_pixels_upper * supersample_factor):
+        for j in range(0, 2*R_planet_pixels_upper * supersample_factor):
+            r_pixel = (i - R_planet_pixels_upper * supersample_factor)**2 + (j - R_planet_pixels_upper * supersample_factor)**2
+            if r_pixel < (R_planet_pixels * supersample_factor)**2:
+                mask_supersampled[i, j] += 1.0
+
+    mask = rebin(mask_supersampled, R_planet_pixels_upper, supersample_factor)
 
     for step in range(n_images):
         x_start = planet_center_x - step - R_planet_pixels_upper
@@ -53,4 +70,3 @@ def generate_lightcurve(image, R_planet_pixels=17.26, background=269):
         fluxes[step] = (unobscured_flux - obscured_flux)
 
     return fluxes
-
